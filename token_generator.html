@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de Token - Acesso aos 300</title>
+    <title>Gerador e Gestor de Tokens - Acesso aos 300</title>
     <!-- Inclui o Tailwind CSS para estilização fácil -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Define as fontes Inter (para texto geral) e Cinzel Decorative (para títulos) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700;900&display=swap" rel="stylesheet">
-    <!-- Inclui Font Awesome para ícones (se precisar de ícones futuros) -->
+    <!-- Inclui Font Awesome para ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         body {
@@ -30,57 +30,87 @@
             background-color: rgba(255, 255, 255, 0.6); /* Fundo semi-transparente para cada token */
             border-left: 4px solid #b91c1c; /* Borda vermelha para destaque */
         }
+
+        /* Estilos para o Modal Personalizado */
+        .custom-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .custom-modal-content {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            position: relative;
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
-    <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md bg-opacity-20 text-center">
-        <h1 class="text-3xl font-bold text-black mb-6">Gerador de Token</h1>
-        <p class="text-black text-lg mb-4" id="user-info">Bem-vindo(a)!</p>
-        <p class="text-black text-sm mb-4">Seu ID de Utilizador: <span id="user-id-display" class="font-semibold break-all"></span></p>
+    <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-5xl bg-opacity-20 text-center flex flex-col md:flex-row gap-8">
+        <!-- Secção do Gerador de Token (Coluna Esquerda) -->
+        <div class="w-full md:w-1/2">
+            <h1 class="text-3xl font-bold text-black mb-6">Gerador de Token</h1>
+            <p class="text-black text-lg mb-4" id="user-info">Bem-vindo(a)!</p>
+            <p class="text-black text-sm mb-4">Seu ID de Utilizador: <span id="user-id-display" class="font-semibold break-all"></span></p>
 
-        <div class="space-y-4 mb-6">
-            <div>
-                <label for="userName" class="block text-black text-sm font-semibold mb-2">Nome para o Token</label>
-                <input
-                    type="text"
-                    id="userName"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-red-700 focus:border-red-700 transition duration-200 placeholder-black"
-                    placeholder="Ex: Leonidas"
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label for="userName" class="block text-black text-sm font-semibold mb-2">Nome para o Token</label>
+                    <input
+                        type="text"
+                        id="userName"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-red-700 focus:border-red-700 transition duration-200 placeholder-black"
+                        placeholder="Ex: Leonidas"
+                    >
+                </div>
+                <div>
+                    <label for="expirationDays" class="block text-black text-sm font-semibold mb-2">Dias de Vencimento</label>
+                    <input
+                        type="number"
+                        id="expirationDays"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-red-700 focus:border-red-700 transition duration-200 placeholder-black"
+                        value="7" min="1"
+                    >
+                </div>
+                <button
+                    id="generateTokenButton"
+                    class="w-full bg-red-800 text-white py-2 px-4 rounded-md hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-700 focus:ring-opacity-50 transition duration-300 transform hover:scale-105"
                 >
-            </div>
-            <div>
-                <label for="expirationDays" class="block text-black text-sm font-semibold mb-2">Dias de Vencimento</label>
-                <input
-                    type="number"
-                    id="expirationDays"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-red-700 focus:border-red-700 transition duration-200 placeholder-black"
-                    value="7" min="1"
+                    Gerar Token
+                </button>
+                <p id="tokenResult" class="text-center text-black text-base mt-4 font-semibold break-all"></p>
+                <p id="expirationDate" class="text-center text-black text-sm mt-2"></p>
+                <button
+                    id="copyTokenButton"
+                    class="mt-4 bg-gray-700 text-white py-2 px-4 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-opacity-50 transition duration-300 transform hover:scale-105 hidden"
                 >
+                    Copiar Token
+                </button>
+                <p id="message" class="text-center text-sm mt-4"></p> <!-- Elemento para exibir mensagens de feedback -->
             </div>
-            <button
-                id="generateTokenButton"
-                class="w-full bg-red-800 text-white py-2 px-4 rounded-md hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-700 focus:ring-opacity-50 transition duration-300 transform hover:scale-105"
-            >
-                Gerar Token
-            </button>
-            <p id="tokenResult" class="text-center text-black text-base mt-4 font-semibold break-all"></p>
-            <p id="expirationDate" class="text-center text-black text-sm mt-2"></p>
-            <button
-                id="copyTokenButton"
-                class="mt-4 bg-gray-700 text-white py-2 px-4 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-opacity-50 transition duration-300 transform hover:scale-105 hidden"
-            >
-                Copiar Token
-            </button>
-            <p id="message" class="text-center text-sm mt-4"></p> <!-- Elemento para exibir mensagens de feedback -->
         </div>
 
-        <h2 class="text-2xl font-bold text-black mb-4 mt-8">Tokens Gerados Recentemente</h2>
-        <div id="token-list" class="space-y-4 mb-6 text-left max-h-60 overflow-y-auto p-2 rounded-md border border-black">
-            <!-- Tokens serão carregados aqui em tempo real -->
-            <p class="text-black text-center" id="loading-tokens-message">Carregando tokens...</p>
+        <!-- Secção da Lista de Tokens (Coluna Direita) -->
+        <div class="w-full md:w-1/2">
+            <h2 class="text-2xl font-bold text-black mb-4">Tokens Gerados Recentemente</h2>
+            <div id="token-list" class="space-y-4 mb-6 text-left max-h-96 overflow-y-auto p-2 rounded-md border border-black">
+                <!-- Tokens serão carregados aqui em tempo real -->
+                <p class="text-black text-center" id="loading-tokens-message">Carregando tokens...</p>
+            </div>
         </div>
 
-
+        <!-- Botão Sair (abaixo das duas colunas) -->
         <button
             id="logout-button"
             class="mt-4 bg-red-800 text-white py-2 px-6 rounded-md hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-700 focus:ring-opacity-50 transition duration-300 transform hover:scale-105"
@@ -92,14 +122,26 @@
         <p class="text-center text-black text-xs mt-6">&copy; 2025 CaMoMiLa. Todos os direitos reservados.</p>
     </div>
 
+    <!-- Modal para Confirmação e Alertas -->
+    <div id="customConfirmModal" class="custom-modal-overlay hidden">
+        <div class="custom-modal-content">
+            <p id="modalMessage" class="text-black text-lg mb-4"></p>
+            <div id="modalButtons" class="flex justify-center space-x-4">
+                <button id="modalConfirmButton" class="bg-red-800 text-white py-2 px-4 rounded-md hover:bg-red-900">Confirmar</button>
+                <button id="modalCancelButton" class="bg-gray-700 text-white py-2 px-4 rounded-md hover:bg-gray-800">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+
     <!-- Firebase SDK e Lógica da Aplicação -->
     <script type="module">
         // Importa as funções necessárias do Firebase
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
         import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
-        import { getFirestore, collection, addDoc, query, onSnapshot } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js'; // Importa Firestore e query, onSnapshot
+        import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, updateDoc, doc } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js';
 
-        // Variáveis globais fornecidas pelo ambiente Canvas (para manter compatibilidade, embora não usadas para login direto aqui)
+        // Variáveis globais fornecidas pelo ambiente Canvas (para manter compatibilidade)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify({
             apiKey: "AIzaSyDVwW_stGdkYpArCLjqsDbBsUiaSihGsUE",
@@ -119,6 +161,7 @@
 
         const githubPagesBaseUrl = 'https://kronah.github.io/Token_boss/';
 
+        // Referências aos elementos HTML
         const userInfoDisplay = document.getElementById('user-info');
         const userIdDisplay = document.getElementById('user-id-display');
         const logoutButton = document.getElementById('logout-button');
@@ -132,7 +175,17 @@
         const tokenListDiv = document.getElementById('token-list');
         const loadingTokensMessage = document.getElementById('loading-tokens-message');
 
-        // Função para exibir mensagens na tela
+        // Referências para o Modal Personalizado
+        const customConfirmModal = document.getElementById('customConfirmModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalConfirmButton = document.getElementById('modalConfirmButton');
+        const modalCancelButton = document.getElementById('modalCancelButton');
+        const modalButtons = document.getElementById('modalButtons');
+
+
+        // --- Funções de UI e Mensagens ---
+
+        // Função para exibir mensagens na tela (feedback para utilizador)
         function showMessage(text, isError = false) {
             messageDisplay.textContent = text;
             if (isError) {
@@ -148,9 +201,43 @@
             return `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}`;
         }
 
+        // Função para exibir um modal de confirmação/alerta personalizado
+        function customModal(message, isConfirm = false) {
+            return new Promise((resolve) => {
+                modalMessage.textContent = message;
+                customConfirmModal.classList.remove('hidden');
+
+                if (isConfirm) {
+                    modalButtons.classList.remove('hidden');
+                    modalConfirmButton.onclick = () => {
+                        customConfirmModal.classList.add('hidden');
+                        resolve(true);
+                    };
+                    modalCancelButton.onclick = () => {
+                        customConfirmModal.classList.add('hidden');
+                        resolve(false);
+                    };
+                } else {
+                    modalButtons.classList.add('hidden'); // Oculta botões de confirmação/cancelar para alertas
+                    // Cria um botão "OK" para alertas simples
+                    const okButton = document.createElement('button');
+                    okButton.textContent = 'OK';
+                    okButton.className = 'bg-gray-700 text-white py-2 px-4 rounded-md hover:bg-gray-800';
+                    okButton.onclick = () => {
+                        customConfirmModal.classList.add('hidden');
+                        resolve(true); // Resolve como true para alertas simples, pois é apenas para fechar
+                        okButton.remove(); // Remove o botão para evitar duplicados
+                    };
+                    modalMessage.parentNode.insertBefore(okButton, modalButtons.nextSibling); // Insere após a mensagem
+                }
+            });
+        }
+
+        // --- Funções de Gestão de Tokens ---
+
         // Função para renderizar os tokens na UI
         function renderTokens(tokens) {
-            tokenListDiv.innerHTML = '';
+            tokenListDiv.innerHTML = ''; // Limpa a lista existente
             if (tokens.length === 0) {
                 tokenListDiv.innerHTML = '<p class="text-black text-center">Nenhum token encontrado.</p>';
                 return;
@@ -158,24 +245,79 @@
 
             tokens.forEach(token => {
                 const tokenCard = document.createElement('div');
-                tokenCard.className = 'token-card p-4 mb-2 rounded-md shadow-sm';
+                tokenCard.className = 'token-card p-4 mb-2 rounded-md shadow-sm flex flex-col justify-between';
                 tokenCard.innerHTML = `
-                    <p class="font-semibold text-black text-base break-all">Token: <span class="text-gray-800">${token.token}</span></p>
-                    <p class="text-black text-sm">Nome: <span class="text-gray-700">${token.userName}</span></p>
-                    <p class="text-black text-sm">Vence em: <span class="text-gray-700">${formatTimestamp(token.expirationTimestamp)}</span></p>
-                    <p class="text-black text-sm">Gerado por: <span class="text-gray-700">${token.generatedBy}</span></p>
-                    <p class="text-black text-sm">Criado em: <span class="text-gray-700">${formatTimestamp(token.createdAt)}</span></p>
+                    <div>
+                        <p class="font-semibold text-black text-base break-all">Token: <span class="text-gray-800">${token.token}</span></p>
+                        <p class="text-black text-sm">Nome: <span class="text-gray-700">${token.userName}</span></p>
+                        <p class="text-black text-sm">Vence em: <span class="text-gray-700">${formatTimestamp(token.expirationTimestamp)}</span></p>
+                        <p class="text-black text-sm">Gerado por: <span class="text-gray-700">${token.generatedBy}</span></p>
+                        <p class="text-black text-sm">Criado em: <span class="text-gray-700">${formatTimestamp(token.createdAt)}</span></p>
+                    </div>
+                    <div class="mt-4 flex space-x-2 justify-end">
+                        <button class="renew-token-button bg-gray-600 text-white px-3 py-1 rounded-md text-xs hover:bg-gray-700 transition duration-200" data-token-id="${token.id}">
+                            <i class="fas fa-redo-alt mr-1"></i> Renovar
+                        </button>
+                        <button class="delete-token-button bg-red-600 text-white px-3 py-1 rounded-md text-xs hover:bg-red-700 transition duration-200" data-token-id="${token.id}">
+                            <i class="fas fa-trash-alt mr-1"></i> Apagar
+                        </button>
+                    </div>
                 `;
                 tokenListDiv.appendChild(tokenCard);
             });
+
+            // Adiciona event listeners aos botões de apagar e renovar
+            document.querySelectorAll('.delete-token-button').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const tokenId = event.currentTarget.dataset.tokenId;
+                    deleteToken(tokenId);
+                });
+            });
+            document.querySelectorAll('.renew-token-button').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const tokenId = event.currentTarget.dataset.tokenId;
+                    renewToken(tokenId);
+                });
+            });
         }
 
-        // Listener para o estado de autenticação
+        async function deleteToken(tokenId) {
+            const confirmDelete = await customModal('Tem certeza que deseja apagar este token?', true);
+            if (!confirmDelete) return;
+
+            try {
+                await deleteDoc(doc(db, `artifacts/${appId}/public/data/generatedTokens`, tokenId));
+                showMessage('Token apagado com sucesso!', false);
+            } catch (error) {
+                console.error("Erro ao apagar token:", error);
+                showMessage('Erro ao apagar token. Verifique a consola.', true);
+            }
+        }
+
+        async function renewToken(tokenId) {
+            const confirmRenew = await customModal('Tem certeza que deseja renovar este token por mais 7 dias?', true);
+            if (!confirmRenew) return;
+
+            try {
+                const newExpirationTime = Date.now() + (7 * 24 * 60 * 60 * 1000); // +7 dias a partir de agora
+                await updateDoc(doc(db, `artifacts/${appId}/public/data/generatedTokens`, tokenId), {
+                    expirationTimestamp: newExpirationTime
+                });
+                showMessage('Token renovado com sucesso por mais 7 dias!', false);
+            } catch (error) {
+                console.error("Erro ao renovar token:", error);
+                showMessage('Erro ao renovar token. Verifique a consola.', true);
+            }
+        }
+
+        // --- Lógica de Autenticação ---
+
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 userInfoDisplay.textContent = `Bem-vindo(a), ${user.email}!`;
                 userIdDisplay.textContent = user.uid;
 
+                // Listener em tempo real para os tokens (apenas se o utilizador estiver autenticado)
                 const tokensCollectionRef = collection(db, `artifacts/${appId}/public/data/generatedTokens`);
                 const q = query(tokensCollectionRef);
 
@@ -184,7 +326,7 @@
                     snapshot.forEach((doc) => {
                         tokens.push({ id: doc.id, ...doc.data() });
                     });
-                    tokens.sort((a, b) => b.createdAt - a.createdAt);
+                    tokens.sort((a, b) => b.createdAt - a.createdAt); // Ordena pelo mais recente
                     renderTokens(tokens);
                     loadingTokensMessage.classList.add('hidden');
                 }, (error) => {
@@ -207,6 +349,8 @@
                 showMessage('Ocorreu um erro ao sair. Tente novamente.', true);
             }
         });
+
+        // --- Lógica de Geração de Token ---
 
         generateTokenButton.addEventListener('click', async () => {
             const name = userNameInput.value.trim();
