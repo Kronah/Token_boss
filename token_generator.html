@@ -19,16 +19,31 @@
             background-position: center; /* Centraliza a imagem no fundo */
             background-repeat: no-repeat; /* Evita que a imagem se repita */
             background-attachment: fixed; /* Mantém a imagem fixa ao rolar */
+            display: flex; /* Para posicionar o conteúdo e o botão Sair */
+            flex-direction: column; /* Coloca os itens em coluna */
+            align-items: center; /* Centraliza horizontalmente */
+            min-height: 100vh; /* Ocupa a altura total da viewport */
+            padding: 1rem; /* Padding geral para o corpo */
         }
         /* Aplica a fonte "300" (Cinzel Decorative) aos títulos */
         h1, h2 {
             font-family: 'Cinzel Decorative', serif;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Sombra para realçar o texto */
         }
+        /* Estilo para painéis de conteúdo (gerador, dashboard, lista) */
+        .content-panel {
+            background-color: rgba(0, 0, 0, 0.5); /* Fundo escuro semi-transparente */
+            padding: 2rem; /* Espaçamento interno */
+            border-radius: 0.5rem; /* Cantos arredondados */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); /* Sombra */
+            color: #ffffff; /* Cor do texto padrão para este painel */
+            position: relative; /* Para posicionamento de elementos internos */
+        }
         /* Estilo para cada cartão de token na lista */
         .token-card {
-            background-color: rgba(255, 255, 255, 0.6); /* Fundo semi-transparente para cada token */
+            background-color: #ffffff; /* Fundo branco sólido */
             border-left: 4px solid #b91c1c; /* Borda vermelha para destaque */
+            color: #1a202c; /* Cor do texto padrão para o cartão do token */
         }
 
         /* Estilos para o Modal Personalizado */
@@ -56,8 +71,9 @@
         }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4">
-    <div class="absolute top-4 right-4">
+<body class="p-4">
+    <!-- Botão Sair (posicionado absolutamente no topo direito) -->
+    <div class="absolute top-4 right-4 z-10">
         <button
             id="logout-button"
             class="bg-red-800 text-white py-2 px-4 rounded-md hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-700 focus:ring-opacity-50 transition duration-300 transform hover:scale-105 text-sm"
@@ -66,29 +82,30 @@
         </button>
     </div>
 
-    <div class="bg-white p-12 rounded-lg shadow-2xl w-full max-w-6xl bg-opacity-20 flex flex-col md:flex-row gap-12">
+    <!-- Container Principal do Dashboard -->
+    <div class="w-full max-w-7xl flex flex-col md:flex-row gap-8 mt-16 md:mt-4">
         <!-- Secção do Gerador de Token (Coluna Esquerda) -->
-        <div class="w-full md:w-1/2 text-center">
-            <h1 class="text-3xl font-bold text-black mb-6">Gerador de Token</h1>
-            <p class="text-black text-lg mb-4" id="user-info">Bem-vindo(a)!</p>
-            <p class="text-black text-sm mb-4">Seu ID de Utilizador: <span id="user-id-display" class="font-semibold break-all"></span></p>
+        <div class="w-full md:w-1/2 content-panel">
+            <h1 class="text-3xl font-bold text-white mb-6 text-center">Gerador de Token</h1>
+            <p class="text-white text-lg mb-4 text-center" id="user-info">Bem-vindo(a)!</p>
+            <p class="text-white text-sm mb-4 text-center">Seu ID de Utilizador: <span id="user-id-display" class="font-semibold break-all"></span></p>
 
             <div class="space-y-4 mb-6">
                 <div>
-                    <label for="userName" class="block text-black text-sm font-semibold mb-2 text-left">Nome para o Token</label>
+                    <label for="userName" class="block text-white text-sm font-semibold mb-2 text-left">Nome para o Token</label>
                     <input
                         type="text"
                         id="userName"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-red-700 focus:border-red-700 transition duration-200 placeholder-black"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-red-700 focus:border-red-700 transition duration-200 placeholder-gray-600 text-black"
                         placeholder="Ex: Leonidas"
                     >
                 </div>
                 <div>
-                    <label for="expirationDays" class="block text-black text-sm font-semibold mb-2 text-left">Dias de Vencimento</label>
+                    <label for="expirationDays" class="block text-white text-sm font-semibold mb-2 text-left">Dias de Vencimento</label>
                     <input
                         type="number"
                         id="expirationDays"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-red-700 focus:border-red-700 transition duration-200 placeholder-black"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-red-700 focus:border-red-700 transition duration-200 placeholder-gray-600 text-black"
                         value="7" min="1"
                     >
                 </div>
@@ -98,8 +115,8 @@
                 >
                     Gerar Token
                 </button>
-                <p id="tokenResult" class="text-center text-black text-base mt-4 font-semibold break-all"></p>
-                <p id="expirationDate" class="text-center text-black text-sm mt-2"></p>
+                <p id="tokenResult" class="text-center text-white text-base mt-4 font-semibold break-all"></p>
+                <p id="expirationDate" class="text-center text-white text-sm mt-2"></p>
                 <button
                     id="copyTokenButton"
                     class="mt-4 bg-gray-700 text-white py-2 px-4 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:ring-opacity-50 transition duration-300 transform hover:scale-105 hidden"
@@ -111,32 +128,32 @@
         </div>
 
         <!-- Secção da Lista de Tokens (Coluna Direita) -->
-        <div class="w-full md:w-1/2 text-center">
-            <h2 class="text-2xl font-bold text-black mb-4">Visão Geral dos Tokens</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 text-black">
-                <div class="bg-blue-800 bg-opacity-70 text-white p-4 rounded-lg shadow-md">
+        <div class="w-full md:w-1/2 content-panel">
+            <div class="text-right text-xs text-gray-200 mb-4">
+                &copy; 2025 CaMoMiLa. Todos os direitos reservados.
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-4 text-center">Visão Geral dos Tokens</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 text-white">
+                <div class="bg-blue-800 bg-opacity-70 p-4 rounded-lg shadow-md">
                     <p class="text-sm">Total</p>
                     <p id="totalTokens" class="text-2xl font-bold">0</p>
                 </div>
-                <div class="bg-green-800 bg-opacity-70 text-white p-4 rounded-lg shadow-md">
+                <div class="bg-green-800 bg-opacity-70 p-4 rounded-lg shadow-md">
                     <p class="text-sm">Ativos</p>
                     <p id="activeTokens" class="text-2xl font-bold">0</p>
                 </div>
-                <div class="bg-red-800 bg-opacity-70 text-white p-4 rounded-lg shadow-md">
+                <div class="bg-red-800 bg-opacity-70 p-4 rounded-lg shadow-md">
                     <p class="text-sm">Expirados</p>
                     <p id="expiredTokens" class="text-2xl font-bold">0</p>
                 </div>
             </div>
-            <h2 class="text-2xl font-bold text-black mb-4">Lista Detalhada de Tokens</h2>
-            <div id="token-list" class="space-y-4 mb-6 text-left max-h-80 overflow-y-auto p-4 rounded-md border border-black">
+            <h2 class="text-2xl font-bold text-white mb-4 text-center">Lista Detalhada de Tokens</h2>
+            <div id="token-list" class="space-y-4 mb-6 text-left max-h-80 overflow-y-auto p-4 rounded-md border border-gray-400">
                 <!-- Tokens serão carregados aqui em tempo real -->
-                <p class="text-black text-center" id="loading-tokens-message">Carregando tokens...</p>
+                <p class="text-white text-center" id="loading-tokens-message">Carregando tokens...</p>
             </div>
         </div>
     </div>
-
-    <!-- Direitos autorais (agora no rodapé) -->
-    <p class="text-center text-black text-xs mt-6">&copy; 2025 CaMoMiLa. Todos os direitos reservados.</p>
 
     <!-- Modal para Confirmação e Alertas -->
     <div id="customConfirmModal" class="custom-modal-overlay hidden">
@@ -285,7 +302,7 @@
         function renderTokens(tokens) {
             tokenListDiv.innerHTML = ''; // Limpa a lista existente
             if (tokens.length === 0) {
-                tokenListDiv.innerHTML = '<p class="text-black text-center">Nenhum token encontrado.</p>';
+                tokenListDiv.innerHTML = '<p class="text-white text-center">Nenhum token encontrado.</p>';
                 totalTokensDisplay.textContent = 0;
                 activeTokensDisplay.textContent = 0;
                 expiredTokensDisplay.textContent = 0;
@@ -479,7 +496,7 @@
                 console.log("Documento guardado com ID: ", docRef.id);
 
                 tokenResultDisplay.textContent = `Token Gerado: ${token}`;
-                tokenResultDisplay.style.color = 'black';
+                tokenResultDisplay.style.color = 'white'; // Alterado para branco
                 expirationDateDisplay.textContent = `Vence em: ${expirationDate.toLocaleDateString('pt-BR')} às ${expirationDate.toLocaleTimeString('pt-BR')}`;
                 copyTokenButton.classList.remove('hidden');
                 copyTokenButton.dataset.token = token;
