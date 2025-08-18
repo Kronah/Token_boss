@@ -141,6 +141,8 @@
     <div id="customConfirmModal" class="custom-modal-overlay hidden">
         <div class="custom-modal-content">
             <p id="modalMessage" class="text-black text-lg mb-4"></p>
+            <!-- Input para o modal, inicialmente oculto -->
+            <input type="number" id="modalInput" class="hidden w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-red-700 focus:border-red-700 transition duration-200 placeholder-black mb-4" placeholder="Quantidade de dias" min="1" />
             <div id="modalButtons" class="flex justify-center space-x-4">
                 <button id="modalConfirmButton" class="bg-red-800 text-white py-2 px-4 rounded-md hover:bg-red-900">Confirmar</button>
                 <button id="modalCancelButton" class="bg-gray-700 text-white py-2 px-4 rounded-md hover:bg-gray-800">Cancelar</button>
@@ -154,7 +156,7 @@
         // Importa as funções necessárias do Firebase
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
         import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
-        import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, updateDoc, doc } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, updateDoc, doc, getDoc } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js'; // Adicionado getDoc
 
         // Variáveis globais fornecidas pelo ambiente Canvas (para manter compatibilidade)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -198,6 +200,7 @@
         // Referências para o Modal Personalizado
         const customConfirmModal = document.getElementById('customConfirmModal');
         const modalMessage = document.getElementById('modalMessage');
+        const modalInput = document.getElementById('modalInput'); // Nova referência para o input no modal
         const modalConfirmButton = document.getElementById('modalConfirmButton');
         const modalCancelButton = document.getElementById('modalCancelButton');
         const modalButtons = document.getElementById('modalButtons');
@@ -221,34 +224,56 @@
             return `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}`;
         }
 
-        // Função para exibir um modal de confirmação/alerta personalizado
-        function customModal(message, isConfirm = false) {
+        // Função para exibir um modal de confirmação/alerta ou prompt personalizado
+        function customModal(message, type = 'alert', inputOptions = {}) {
             return new Promise((resolve) => {
                 modalMessage.textContent = message;
                 customConfirmModal.classList.remove('hidden');
 
-                if (isConfirm) {
-                    modalButtons.classList.remove('hidden');
+                // Esconder ou mostrar o input do modal
+                if (type === 'prompt') {
+                    modalInput.classList.remove('hidden');
+                    modalInput.type = inputOptions.type || 'text';
+                    modalInput.placeholder = inputOptions.placeholder || '';
+                    modalInput.value = inputOptions.value || '';
+                    modalInput.min = inputOptions.min || '';
+                    modalInput.max = inputOptions.max || '';
+                    modalInput.focus();
+                } else {
+                    modalInput.classList.add('hidden');
+                    modalInput.value = ''; // Limpar valor anterior
+                }
+
+                // Configurar botões
+                modalButtons.classList.remove('hidden');
+                modalConfirmButton.classList.remove('hidden');
+                modalCancelButton.classList.remove('hidden');
+
+                // Limpar event listeners antigos
+                modalConfirmButton.onclick = null;
+                modalCancelButton.onclick = null;
+
+                if (type === 'confirm' || type === 'prompt') {
                     modalConfirmButton.onclick = () => {
                         customConfirmModal.classList.add('hidden');
-                        resolve(true);
+                        if (type === 'prompt') {
+                            resolve(modalInput.value); // Retorna o valor do input
+                        } else {
+                            resolve(true); // Retorna true para confirmação
+                        }
                     };
                     modalCancelButton.onclick = () => {
                         customConfirmModal.classList.add('hidden');
-                        resolve(false);
+                        resolve(false); // Retorna false para cancelamento
                     };
-                } else {
-                    modalButtons.classList.add('hidden'); // Oculta botões de confirmação/cancelar para alertas
-                    // Cria um botão "OK" para alertas simples
-                    const okButton = document.createElement('button');
-                    okButton.textContent = 'OK';
-                    okButton.className = 'bg-gray-700 text-white py-2 px-4 rounded-md hover:bg-gray-800';
-                    okButton.onclick = () => {
+                } else { // type === 'alert'
+                    modalConfirmButton.textContent = 'OK'; // Altera texto para OK
+                    modalCancelButton.classList.add('hidden'); // Oculta botão de cancelar para alertas
+                    modalConfirmButton.onclick = () => {
                         customConfirmModal.classList.add('hidden');
-                        resolve(true); // Resolve como true para alertas simples, pois é apenas para fechar
-                        okButton.remove(); // Remove o botão para evitar duplicados
+                        resolve(true); // Resolve como true para alertas simples
+                        modalConfirmButton.textContent = 'Confirmar'; // Restaura texto do botão
                     };
-                    modalMessage.parentNode.insertBefore(okButton, modalButtons.nextSibling); // Insere após a mensagem
                 }
             });
         }
@@ -290,7 +315,7 @@
                         <p class="text-black text-sm">Criado em: <span class="text-gray-700">${formatTimestamp(token.createdAt)}</span></p>
                     </div>
                     <div class="mt-4 flex space-x-2 justify-end">
-                        <button class="renew-token-button bg-gray-600 text-white px-3 py-1 rounded-md text-xs hover:bg-gray-700 transition duration-200" data-token-id="${token.id}" ${isActive ? '' : 'disabled'}>
+                        <button class="renew-token-button bg-gray-600 text-white px-3 py-1 rounded-md text-xs hover:bg-gray-700 transition duration-200" data-token-id="${token.id}">
                             <i class="fas fa-redo-alt mr-1"></i> Renovar
                         </button>
                         <button class="delete-token-button bg-red-600 text-white px-3 py-1 rounded-md text-xs hover:bg-red-700 transition duration-200" data-token-id="${token.id}">
@@ -322,7 +347,7 @@
         }
 
         async function deleteToken(tokenId) {
-            const confirmDelete = await customModal('Tem certeza que deseja apagar este token?', true);
+            const confirmDelete = await customModal('Tem certeza que deseja apagar este token?', 'confirm');
             if (!confirmDelete) return;
 
             try {
@@ -335,15 +360,42 @@
         }
 
         async function renewToken(tokenId) {
-            const confirmRenew = await customModal('Tem certeza que deseja renovar este token por mais 7 dias?', true);
-            if (!confirmRenew) return;
+            const renewDaysStr = await customModal('Quantos dias deseja renovar o token?', 'prompt', {
+                type: 'number',
+                placeholder: 'Dias de renovação',
+                value: 7, // default to 7 days
+                min: 1
+            });
+
+            if (renewDaysStr === false || renewDaysStr === null) { // User clicked cancel or closed modal
+                return;
+            }
+
+            const renewDays = parseInt(renewDaysStr);
+
+            if (isNaN(renewDays) || renewDays <= 0) {
+                await customModal('Por favor, insira um número válido de dias para renovar.', 'alert');
+                return;
+            }
 
             try {
-                const newExpirationTime = Date.now() + (7 * 24 * 60 * 60 * 1000); // +7 dias a partir de agora
-                await updateDoc(doc(db, `artifacts/${appId}/public/data/generatedTokens`, tokenId), {
+                const docRef = doc(db, `artifacts/${appId}/public/data/generatedTokens`, tokenId);
+                const tokenDoc = await getDoc(docRef); // Get current token data to calculate new expiration from its current expiration
+
+                if (!tokenDoc.exists()) {
+                    showMessage('Token não encontrado para renovação.', true);
+                    return;
+                }
+
+                const currentExpirationTimestamp = tokenDoc.data().expirationTimestamp;
+                const baseTimeForRenewal = Math.max(Date.now(), currentExpirationTimestamp); // Renew from now, or from current expiration if it's in the future
+
+                const newExpirationTime = baseTimeForRenewal + (renewDays * 24 * 60 * 60 * 1000); // Add days in milliseconds
+
+                await updateDoc(docRef, {
                     expirationTimestamp: newExpirationTime
                 });
-                showMessage('Token renovado com sucesso por mais 7 dias!', false);
+                showMessage(`Token renovado com sucesso por ${renewDays} dias!`, false);
             } catch (error) {
                 console.error("Erro ao renovar token:", error);
                 showMessage('Erro ao renovar token. Verifique a consola.', true);
