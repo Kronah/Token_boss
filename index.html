@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login com Firebase (Auth + Realtime DB)</title>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <style>
+    :root {
+      --bg: #0f172a;        /* slate-900 */
+      --panel: #111827cc;   /* gray-900 + alpha */
+      --card: #111827;      /* gray-900 */
+      --accent: #22c55e;    /* green-500 */
+      --text: #e5e7eb;      /* gray-200 */
+      --muted: #9ca3af;     /* gray-400 */
+      --danger: #ef4444;    /* red-500 */
+      --warning: #f59e0b;   /* amber-500 */
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 20% 10%, #1f2937 0%, #0b1220 50%, var(--bg) 100%);
+      color: var(--text);
+      min-height: 100svh; display: grid; place-items: center; padding: 24px;
+    }
+    .wrap { width: 100%; max-width: 980px; display: grid; gap: 24px; }
+    header { text-align: center; }
+    header h1 { margin: 0; font-size: clamp(24px, 4vw, 40px); letter-spacing: .5px; }
+    header p { margin: 8px 0 0; color: var(--muted); }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 880px){ .grid { grid-template-columns: 1fr; } }
+
+    .card { background: linear-gradient( to bottom right, #0b1220, #0f172a ); border: 1px solid #1f2937; border-radius: 18px; box-shadow: 0 10px 40px #0008; padding: 22px; }
+    .card h2 { margin-top: 0; font-size: 18px; letter-spacing: .3px; color: #cbd5e1; }
+
+    .row { display: grid; gap: 10px; margin: 12px 0; }
+    .row.h { grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    label { font-size: 12px; color: var(--muted); letter-spacing: .4px; }
+    input {
+      width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid #1f2937; background: #0b1220; color: var(--text); outline: none; transition: .2s border-color, .2s box-shadow;
+    }
+    input:focus { border-color: #334155; box-shadow: 0 0 0 3px #22c55e22; }
+
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      appearance: none; border: 0; border-radius: 12px; padding: 12px 16px; cursor: pointer; font-weight: 600; letter-spacing: .3px; transition: transform .05s ease, box-shadow .2s ease, background .2s;
+    }
+    .btn {
+      background: linear-gradient( to bottom right, #16a34a, #22c55e ); color: #05130b; box-shadow: 0 6px 20px #22c55e40;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:active { transform: translateY(1px); }
+    .btn.alt { background: #0b1220; color: var(--text); border: 1px solid #1f2937; box-shadow: none; }
+
+    .note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+    .status { display: grid; gap: 8px; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; background: #0b1220; border: 1px solid #1f2937; color: #cbd5e1; padding: 10px 12px; border-radius: 999px; font-size: 12px; }
+    .pill .dot { width: 8px; height: 8px; border-radius: 999px; background: #64748b; }
+    .pill.ok .dot { background: var(--accent); }
+    .pill.warn .dot { background: var(--warning); }
+
+    .hidden { display: none !important; }
+
+    .toast {
+      position: fixed; right: 16px; bottom: 16px; background: #0b1220; color: var(--text); border: 1px solid #1f2937; padding: 12px 14px; border-radius: 12px; box-shadow: 0 10px 30px #0008; opacity: 0; transform: translateY(10px); pointer-events: none; transition: .25s ease; max-width: 90vw;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.err { border-color: #7f1d1d; color: #fecaca; }
+    .toast.ok { border-color: #14532d; color: #dcfce7; }
+    code {
+      background: #111827; border: 1px solid #1f2937; padding: 2px 6px; border-radius: 8px; color: #d1fae5;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>LOGIN • FIREBASE AUTH + REALTIME DATABASE</h1>
+      <p>Modelo pronto para usar e expandir. Preencha sua <code>firebaseConfig</code> e aplique as regras indicadas.</p>
+    </header>
+
+    <div class="grid">
+      <!-- Coluna 1: Formulários -->
+      <section class="card">
+        <h2>Entrar</h2>
+        <div class="row">
+          <label for="login-email">E-mail</label>
+          <input id="login-email" type="email" placeholder="voce@email.com" autocomplete="username" />
+        </div>
+        <div class="row">
+          <label for="login-pass">Senha</label>
+          <input id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+        <div class="actions">
+          <button id="btn-login" class="btn">Entrar</button>
+          <button id="btn-reset" class="btn alt" title="Envia e-mail de redefinição de senha">Esqueci a senha</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Criar conta</h2>
+        <div class="row h">
+          <div>
+            <label for="name">Nome</label>
+            <input id="name" type="text" placeholder="Seu nome" />
+          </div>
+          <div>
+            <label for="signup-email">E-mail</label>
+            <input id="signup-email" type="email" placeholder="voce@email.com" autocomplete="email" />
+          </div>
+        </div>
+        <div class="row">
+          <label for="signup-pass">Senha</label>
+          <input id="signup-pass" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+        </div>
+        <div class="actions">
+          <button id="btn-signup" class="btn">Criar conta</button>
+        </div>
+        <p class="note">Ao criar, um perfil básico será salvo em <code>/users/{uid}</code> no Realtime Database.</p>
+      </section>
+
+      <!-- Coluna 2: Status e Perfil -->
+      <section class="card">
+        <h2>Status</h2>
+        <div class="status">
+          <div id="auth-pill" class="pill"><span class="dot"></span><span id="auth-text">Desconectado</span></div>
+          <div class="actions">
+            <button id="btn-logout" class="btn alt hidden">Sair</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Perfil (do Realtime DB)</h2>
+        <div id="profile" class="row">
+          <div class="note">Faça login para carregar seu perfil.</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>Como usar</h2>
+      <ol>
+        <li>Crie um projeto no Firebase e ative <b>Authentication &gt; E-mail/Senha</b>.</li>
+        <li>Ative o <b>Realtime Database</b> no modo bloqueado e use regras que exijam autenticação (exemplo abaixo).</li>
+        <li>Preencha seu objeto <code>firebaseConfig</code> no script JS.</li>
+        <li>Abra este arquivo em um servidor local (ex.: VSCode Live Server) para evitar bloqueios do navegador.</li>
+      </ol>
+      <p><b>Regras exemplo (básicas)</b> — personalize conforme sua necessidade:</p>
+      <pre style="white-space:pre-wrap; background:#0b1220; border:1px solid #1f2937; padding:12px; border-radius:12px; color:#cbd5e1;">
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    }
+  }
+}
+      </pre>
+    </section>
+  </div>
+
+  <!-- Firebase v10 compat SDKs (mais simples em um único HTML) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-database-compat.js"></script>
+
+  <script>
+    // 1) COLOQUE SUA CONFIGURAÇÃO AQUI
+    // Pegue em: Firebase Console > Configurações do projeto > Seus aplicativos > App Web
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "SEU_PROJETO.firebaseapp.com",
+      databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com",
+      projectId: "SEU_PROJETO",
+      storageBucket: "SEU_PROJETO.appspot.com",
+      messagingSenderId: "",
+      appId: ""
+    };
+
+    // 2) Inicializa
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    // Utilidades UI
+    const $ = (sel) => document.querySelector(sel);
+    const toast = (msg, type = "") => {
+      let el = document.querySelector('.toast');
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'toast';
+        document.body.appendChild(el);
+      }
+      el.textContent = msg;
+      el.classList.remove('ok','err','show');
+      if (type) el.classList.add(type);
+      // pequeno atraso para reiniciar a animação
+      requestAnimationFrame(() => {
+        el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 2800);
+      });
+    };
+
+    const setAuthPill = (logged, email) => {
+      const pill = $('#auth-pill');
+      const text = $('#auth-text');
+      if (logged) {
+        pill.classList.add('ok');
+        pill.classList.remove('warn');
+        text.textContent = `Conectado como ${email}`;
+        $('#btn-logout').classList.remove('hidden');
+      } else {
+        pill.classList.remove('ok');
+        pill.classList.add('warn');
+        text.textContent = 'Desconectado';
+        $('#btn-logout').classList.add('hidden');
+        $('#profile').innerHTML = '<div class="note">Faça login para carregar seu perfil.</div>';
+      }
+    };
+
+    // Auth state
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        setAuthPill(true, user.email || '(sem e-mail)');
+        // Carrega perfil do DB
+        const snap = await db.ref(`users/${user.uid}`).get();
+        if (!snap.exists()) {
+          // cria perfil mínimo se não existir
+          await db.ref(`users/${user.uid}`).set({
+            email: user.email || null,
+            name: user.displayName || null,
+            createdAt: new Date().toISOString(),
+            lastLoginAt: new Date().toISOString()
+          });
+        } else {
+          // atualiza último login
+          await db.ref(`users/${user.uid}/lastLoginAt`).set(new Date().toISOString());
+        }
+        renderProfile(user.uid);
+      } else {
+        setAuthPill(false);
+      }
+    });
+
+    async function renderProfile(uid){
+      const el = $('#profile');
+      const snap = await db.ref(`users/${uid}`).get();
+      const data = snap.val() || {};
+      el.innerHTML = `
+        <div class="row h">
+          <div>
+            <label>UID</label>
+            <input value="${uid}" readonly />
+          </div>
+          <div>
+            <label>Nome</label>
+            <input id="profile-name" value="${data.name ?? ''}" placeholder="Seu nome" />
+          </div>
+        </div>
+        <div class="row h">
+          <div>
+            <label>E-mail</label>
+            <input value="${data.email ?? ''}" readonly />
+          </div>
+          <div>
+            <label>Criado em</label>
+            <input value="${(data.createdAt ?? '').toString()}" readonly />
+          </div>
+        </div>
+        <div class="row h">
+          <div>
+            <label>Último login</label>
+            <input value="${(data.lastLoginAt ?? '').toString()}" readonly />
+          </div>
+          <div class="actions" style="align-items:end;">
+            <button id="btn-save-profile" class="btn">Salvar perfil</button>
+          </div>
+        </div>
+      `;
+      $('#btn-save-profile').addEventListener('click', async () => {
+        const name = $('#profile-name').value.trim();
+        await db.ref(`users/${uid}/name`).set(name || null);
+        toast('Perfil atualizado', 'ok');
+      });
+    }
+
+    // Ações de formulário
+    $('#btn-login').addEventListener('click', async () => {
+      const email = $('#login-email').value.trim();
+      const pass = $('#login-pass').value;
+      if (!email || !pass) return toast('Informe e-mail e senha.','err');
+      try {
+        await auth.signInWithEmailAndPassword(email, pass);
+        toast('Login realizado ✅','ok');
+      } catch (e) {
+        console.error(e);
+        toast('Erro ao entrar: ' + (e?.message || e), 'err');
+      }
+    });
+
+    $('#btn-signup').addEventListener('click', async () => {
+      const name = $('#name').value.trim();
+      const email = $('#signup-email').value.trim();
+      const pass = $('#signup-pass').value;
+      if (!email || !pass) return toast('Informe e-mail e senha.','err');
+      try {
+        const cred = await auth.createUserWithEmailAndPassword(email, pass);
+        const uid = cred.user.uid;
+        // Salva perfil básico
+        await db.ref(`users/${uid}`).set({
+          email, name: name || null, createdAt: new Date().toISOString(), lastLoginAt: new Date().toISOString()
+        });
+        // Opcional: atualizar displayName
+        await cred.user.updateProfile({ displayName: name || undefined });
+        toast('Conta criada 🎉','ok');
+      } catch (e) {
+        console.error(e);
+        toast('Erro ao criar conta: ' + (e?.message || e), 'err');
+      }
+    });
+
+    $('#btn-reset').addEventListener('click', async () => {
+      const email = $('#login-email').value.trim() || $('#signup-email').value.trim();
+      if (!email) return toast('Informe seu e-mail no campo de login.','err');
+      try {
+        await auth.sendPasswordResetEmail(email);
+        toast('E-mail de redefinição enviado 📧','ok');
+      } catch (e) {
+        console.error(e);
+        toast('Erro ao enviar e-mail: ' + (e?.message || e), 'err');
+      }
+    });
+
+    $('#btn-logout').addEventListener('click', async () => {
+      try { await auth.signOut(); toast('Saiu da conta.','ok'); } catch (e) { toast('Erro ao sair: '+(e?.message||e),'err'); }
+    });
+  </script>
+
+  <div class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
