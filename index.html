@@ -70,17 +70,7 @@
             <p id="message" class="text-center text-sm mt-4"></p>
         </div>
 
-        <div id="welcome-message" class="hidden text-center mt-6">
-            <h2 class="text-2xl font-semibold text-black">Bem-vindo(a)!</h2>
-            <p class="text-black mt-2" id="user-email-display">Você está logado(a) com sucesso.</p>
-            <button
-                id="logout-button"
-                class="mt-4 bg-red-800 text-white py-2 px-4 rounded-md hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-700 focus:ring-opacity-50 transition duration-300"
-            >
-                Sair
-            </button>
-        </div>
-
+        <!-- A mensagem de boas-vindas foi removida daqui, pois o utilizador será redirecionado -->
         <!-- Direitos autorais -->
         <p class="text-center text-black text-xs mt-6">&copy; 2025 CaMoMiLa. Todos os direitos reservados.</p>
     </div>
@@ -97,10 +87,9 @@
             signOut
         } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
 
-        // --- Configuração do seu Projeto Firebase ---
-        // ATENÇÃO: Verifique o 'appId' no seu Console do Firebase > Configurações do Projeto > Geral > Seus Aplicativos (Web)
-        // O valor abaixo é uma inferência e pode precisar de ajuste.
-        const firebaseConfig = {
+        // Variáveis globais fornecidas pelo ambiente Canvas
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; // Fallback para 'default-app-id' para testes locais
+        const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify({
             apiKey: "AIzaSyDVwW_stGdkYpArCLjqsDbBsUiaSihGsUE",
             authDomain: "bossdv-72d16.firebaseapp.com",
             databaseURL: "https://bossdv-72d16-default-rtdb.firebaseio.com",
@@ -108,23 +97,22 @@
             storageBucket: "bossdv-72d16.firebasestorage.app",
             messagingSenderId: "141528827265",
             appId: "1:141528827265:web:531737e108e484a0869480" // Este é um exemplo, verifique o seu no console!
-        };
+        });
+        const firebaseConfig = JSON.parse(firebaseConfigString);
 
         // Inicializa o Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
+        const githubPagesBaseUrl = 'https://kronah.github.io/Token_boss/';
+
         // Referências aos elementos HTML
         const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
+        const passwordInput = document = document.getElementById('password');
         const loginButton = document.getElementById('login-button');
         const signupButton = document.getElementById('signup-button');
-        const logoutButton = document.getElementById('logout-button');
         const messageDisplay = document.getElementById('message');
         const loginForm = document.getElementById('login-form');
-        const welcomeMessage = document.getElementById('welcome-message');
-        const userEmailDisplay = document.getElementById('user-email-display');
-
 
         // Função para exibir mensagens na tela
         function showMessage(text, isError = false) {
@@ -141,18 +129,12 @@
         // Listener para o estado de autenticação (se o utilizador está autenticado ou não)
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // Utilizador autenticado
-                loginForm.classList.add('hidden');
-                welcomeMessage.classList.remove('hidden');
-                userEmailDisplay.textContent = `Você está logado(a) como: ${user.email}`;
-                showMessage('Login realizado com sucesso!', false); // Mensagem de sucesso
+                // Utilizador autenticado: redireciona para a nova página (Gerador de Tokens)
+                window.location.href = `${githubPagesBaseUrl}token_generator.html`;
             } else {
-                // Utilizador desautenticado
+                // Utilizador desautenticado: mantém o formulário de login visível
                 loginForm.classList.remove('hidden');
-                welcomeMessage.classList.add('hidden');
                 showMessage(''); // Limpa a mensagem
-                emailInput.value = ''; // Limpa os campos de entrada
-                passwordInput.value = '';
             }
         });
 
@@ -166,7 +148,7 @@
             }
             try {
                 await signInWithEmailAndPassword(auth, email, password);
-                // onAuthStateChanged vai lidar com a atualização da UI
+                // onAuthStateChanged vai lidar com o redirecionamento
             } catch (error) {
                 let errorMessage;
                 switch (error.code) {
@@ -206,8 +188,7 @@
 
             try {
                 await createUserWithEmailAndPassword(auth, email, password);
-                // onAuthStateChanged vai lidar com a atualização da UI
-                showMessage('Conta criada com sucesso! Você está logado(a).', false); // Mensagem de sucesso
+                // onAuthStateChanged vai lidar com o redirecionamento
             } catch (error) {
                 let errorMessage;
                 switch (error.code) {
@@ -225,17 +206,6 @@
                 }
                 showMessage(errorMessage, true);
                 console.error('Erro de registo:', error);
-            }
-        });
-
-        // Evento de clique para o botão de Sair
-        logoutButton.addEventListener('click', async () => {
-            try {
-                await signOut(auth);
-                // onAuthStateChanged irá lidar com a atualização da UI (mostrando o formulário de login novamente)
-            } catch (error) {
-                showMessage(`Erro ao sair: ${error.message}`, true);
-                console.error('Erro ao sair:', error);
             }
         });
     </script>
