@@ -96,11 +96,11 @@
     <script type="module">
         // Importa as funções necessárias do Firebase
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
-        import { getAuth, onAuthStateChanged, signOut, signInWithCustomToken, signInAnonymously } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
-        import { getFirestore, collection, addDoc, query, onSnapshot, orderBy } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js'; // Importa Firestore e query, onSnapshot, orderBy
+        import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc, query, onSnapshot } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js'; // Importa Firestore e query, onSnapshot
 
-        // Variáveis globais fornecidas pelo ambiente Canvas
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; // Fallback para 'default-app-id' para testes locais
+        // Variáveis globais fornecidas pelo ambiente Canvas (para manter compatibilidade, embora não usadas para login direto aqui)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify({
             apiKey: "AIzaSyDVwW_stGdkYpArCLjqsDbBsUiaSihGsUE",
             authDomain: "bossdv-72d16.firebaseapp.com",
@@ -108,21 +108,19 @@
             projectId: "bossdv-72d16",
             storageBucket: "bossdv-72d16.firebasestorage.app",
             messagingSenderId: "141528827265",
-            appId: "1:141528827265:web:531737e108e484a0869480" // Este é um exemplo, verifique o seu no console!
+            appId: "1:141528827265:web:531737e108e484a0869480"
         });
         const firebaseConfig = JSON.parse(firebaseConfigString);
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-
-        // Inicializa o Firebase com a configuração fornecida
+        // Inicializa o Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app); // Inicializa o Firestore
+        const db = getFirestore(app);
 
-        const githubPagesBaseUrl = 'https://kronah.github.io/Token_boss/'; // URL base do seu GitHub Pages
+        const githubPagesBaseUrl = 'https://kronah.github.io/Token_boss/';
 
         const userInfoDisplay = document.getElementById('user-info');
-        const userIdDisplay = document.getElementById('user-id-display'); // Para exibir o ID do utilizador
+        const userIdDisplay = document.getElementById('user-id-display');
         const logoutButton = document.getElementById('logout-button');
         const userNameInput = document.getElementById('userName');
         const expirationDaysInput = document.getElementById('expirationDays');
@@ -130,12 +128,11 @@
         const tokenResultDisplay = document.getElementById('tokenResult');
         const expirationDateDisplay = document.getElementById('expirationDate');
         const copyTokenButton = document.getElementById('copyTokenButton');
-        const messageDisplay = document.getElementById('message'); // Referência ao elemento de mensagem de feedback
-        const tokenListDiv = document.getElementById('token-list'); // Novo: Div para a lista de tokens
-        const loadingTokensMessage = document.getElementById('loading-tokens-message'); // Novo: Mensagem de carregamento
+        const messageDisplay = document.getElementById('message');
+        const tokenListDiv = document.getElementById('token-list');
+        const loadingTokensMessage = document.getElementById('loading-tokens-message');
 
-
-        // Função para exibir mensagens na tela (substitui alert())
+        // Função para exibir mensagens na tela
         function showMessage(text, isError = false) {
             messageDisplay.textContent = text;
             if (isError) {
@@ -153,7 +150,7 @@
 
         // Função para renderizar os tokens na UI
         function renderTokens(tokens) {
-            tokenListDiv.innerHTML = ''; // Limpa a lista existente
+            tokenListDiv.innerHTML = '';
             if (tokens.length === 0) {
                 tokenListDiv.innerHTML = '<p class="text-black text-center">Nenhum token encontrado.</p>';
                 return;
@@ -174,25 +171,22 @@
         }
 
         // Listener para o estado de autenticação
-        onAuthStateChanged(auth, async (user) => {
+        onAuthStateChanged(auth, (user) => {
             if (user) {
-                // Utilizador autenticado
                 userInfoDisplay.textContent = `Bem-vindo(a), ${user.email}!`;
-                userIdDisplay.textContent = user.uid; // Exibe o UID do utilizador
+                userIdDisplay.textContent = user.uid;
 
-                // Configura o ouvinte em tempo real para os tokens no Firestore
                 const tokensCollectionRef = collection(db, `artifacts/${appId}/public/data/generatedTokens`);
-                const q = query(tokensCollectionRef); // Consulta para todos os tokens
+                const q = query(tokensCollectionRef);
 
                 onSnapshot(q, (snapshot) => {
                     const tokens = [];
                     snapshot.forEach((doc) => {
                         tokens.push({ id: doc.id, ...doc.data() });
                     });
-                    // Ordena os tokens pela data de criação, do mais recente para o mais antigo
                     tokens.sort((a, b) => b.createdAt - a.createdAt);
                     renderTokens(tokens);
-                    loadingTokensMessage.classList.add('hidden'); // Oculta a mensagem de carregamento
+                    loadingTokensMessage.classList.add('hidden');
                 }, (error) => {
                     console.error("Erro ao buscar tokens do Firestore:", error);
                     showMessage('Erro ao carregar tokens. Verifique a consola.', true);
@@ -200,34 +194,14 @@
                 });
 
             } else {
-                // Utilizador desautenticado, redireciona para a tela de login
+                // Se o utilizador não estiver autenticado, redireciona para a página de login
                 window.location.href = `${githubPagesBaseUrl}index.html`;
             }
         });
 
-        // Função para autenticar o utilizador no carregamento da página (para o ambiente Canvas)
-        async function authenticateUser() {
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    // Se não houver token personalizado (ex: testes locais ou fora do Canvas), tenta autenticação anónima
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Erro na autenticação inicial:", error);
-                showMessage('Erro na autenticação. Por favor, tente novamente.', true);
-                window.location.href = `${githubPagesBaseUrl}index.html`; // Redireciona para login em caso de falha grave
-            }
-        }
-
-        // Chama a função de autenticação no carregamento da página
-        authenticateUser();
-
         logoutButton.addEventListener('click', async () => {
             try {
                 await signOut(auth);
-                // onAuthStateChanged irá lidar com o redirecionamento
             } catch (error) {
                 console.error('Erro ao sair:', error);
                 showMessage('Ocorreu um erro ao sair. Tente novamente.', true);
@@ -247,33 +221,31 @@
             }
 
             const currentTime = Date.now();
-            const expirationTime = currentTime + (days * 24 * 60 * 60 * 1000); // Milissegundos
+            const expirationTime = currentTime + (days * 24 * 60 * 60 * 1000);
             const expirationDate = new Date(expirationTime);
 
-            // Geração de um token simples (apenas para demonstração)
             const token = btoa(`${name}:${expirationTime}:${Math.random().toString(36).substring(2, 15)}`);
 
             const user = auth.currentUser;
-            const generatedByEmail = user ? user.email : 'anonymous'; // Obtém o email do utilizador logado
+            const generatedByEmail = user ? user.email : 'anonymous';
 
             const tokenData = {
                 token: token,
                 userName: name,
-                expirationTimestamp: expirationTime, // Armazena como timestamp para facilitar consultas
+                expirationTimestamp: expirationTime,
                 generatedBy: generatedByEmail,
-                createdAt: Date.now() // Timestamp da criação
+                createdAt: Date.now()
             };
 
             try {
-                // Adiciona um novo documento com um ID gerado automaticamente à coleção 'generatedTokens'
                 const docRef = await addDoc(collection(db, `artifacts/${appId}/public/data/generatedTokens`), tokenData);
                 console.log("Documento guardado com ID: ", docRef.id);
 
                 tokenResultDisplay.textContent = `Token Gerado: ${token}`;
                 tokenResultDisplay.style.color = 'black';
                 expirationDateDisplay.textContent = `Vence em: ${expirationDate.toLocaleDateString('pt-BR')} às ${expirationDate.toLocaleTimeString('pt-BR')}`;
-                copyTokenButton.classList.remove('hidden'); // Mostra o botão de copiar
-                copyTokenButton.dataset.token = token; // Armazena o token para ser copiado
+                copyTokenButton.classList.remove('hidden');
+                copyTokenButton.dataset.token = token;
                 showMessage('Token gerado e guardado no Firestore com sucesso!', false);
 
             } catch (e) {
@@ -289,7 +261,6 @@
         copyTokenButton.addEventListener('click', () => {
             const tokenToCopy = copyTokenButton.dataset.token;
             if (tokenToCopy) {
-                // Usar document.execCommand('copy') para compatibilidade em iframes
                 const textArea = document.createElement("textarea");
                 textArea.value = tokenToCopy;
                 document.body.appendChild(textArea);
