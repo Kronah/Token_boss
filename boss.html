@@ -63,6 +63,7 @@
             >
                 Copiar Token
             </button>
+            <p id="message" class="text-center text-sm mt-4"></p> <!-- Elemento para exibir mensagens de feedback -->
         </div>
 
         <button
@@ -78,21 +79,28 @@
 
     <!-- Firebase SDK e Lógica da Aplicação -->
     <script type="module">
+        // Importa as funções necessárias do Firebase
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
         import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js'; // Importa Firestore
 
-        const firebaseConfig = {
+        // Variáveis globais fornecidas pelo ambiente Canvas
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; // Fallback para 'default-app-id' para testes locais
+        const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify({
             apiKey: "AIzaSyDVwW_stGdkYpArCLjqsDbBsUiaSihGsUE",
             authDomain: "bossdv-72d16.firebaseapp.com",
             databaseURL: "https://bossdv-72d16-default-rtdb.firebaseio.com",
             projectId: "bossdv-72d16",
             storageBucket: "bossdv-72d16.firebasestorage.app",
             messagingSenderId: "141528827265",
-            appId: "1:141528827265:web:531737e108e484a0869480"
-        };
+            appId: "1:141528827265:web:531737e108e484a0869480" // Este é um exemplo, verifique o seu no console!
+        });
+        const firebaseConfig = JSON.parse(firebaseConfigString);
 
+        // Inicializa o Firebase com a configuração fornecida
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db = getFirestore(app); // Inicializa o Firestore
 
         const githubPagesBaseUrl = 'https://kronah.github.io/Token_boss/'; // URL base do seu GitHub Pages
 
@@ -104,6 +112,17 @@
         const tokenResultDisplay = document.getElementById('tokenResult');
         const expirationDateDisplay = document.getElementById('expirationDate');
         const copyTokenButton = document.getElementById('copyTokenButton');
+        const messageDisplay = document.getElementById('message'); // Referência ao elemento de mensagem de feedback
+
+        // Função para exibir mensagens na tela (substitui alert())
+        function showMessage(text, isError = false) {
+            messageDisplay.textContent = text;
+            if (isError) {
+                messageDisplay.className = 'text-center text-sm mt-4 text-red-600 font-medium';
+            } else {
+                messageDisplay.className = 'text-center text-sm mt-4 text-green-600 font-medium';
+            }
+        }
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -119,19 +138,19 @@
                 // onAuthStateChanged irá lidar com o redirecionamento
             } catch (error) {
                 console.error('Erro ao sair:', error);
-                alert('Ocorreu um erro ao sair. Tente novamente.');
+                showMessage('Ocorreu um erro ao sair. Tente novamente.', true);
             }
         });
 
-        generateTokenButton.addEventListener('click', () => {
+        generateTokenButton.addEventListener('click', async () => { // Alterado para async
             const name = userNameInput.value.trim();
             const days = parseInt(expirationDaysInput.value);
 
             if (!name || isNaN(days) || days <= 0) {
-                tokenResultDisplay.textContent = 'Por favor, preencha um nome e dias de vencimento válidos.';
-                tokenResultDisplay.style.color = 'red';
+                tokenResultDisplay.textContent = '';
                 expirationDateDisplay.textContent = '';
                 copyTokenButton.classList.add('hidden');
+                showMessage('Por favor, preencha um nome e dias de vencimento válidos.', true);
                 return;
             }
 
@@ -140,15 +159,40 @@
             const expirationDate = new Date(expirationTime);
 
             // Geração de um token simples (apenas para demonstração)
+            // Em um ambiente de produção, tokens deveriam ser gerados de forma mais segura
             const token = btoa(`${name}:${expirationTime}:${Math.random().toString(36).substring(2, 15)}`);
 
-            tokenResultDisplay.textContent = `Token Gerado: ${token}`;
-            tokenResultDisplay.style.color = 'black';
-            expirationDateDisplay.textContent = `Vence em: ${expirationDate.toLocaleDateString('pt-BR')} às ${expirationDate.toLocaleTimeString('pt-BR')}`;
-            copyTokenButton.classList.remove('hidden'); // Mostra o botão de copiar
+            const user = auth.currentUser;
+            const generatedByEmail = user ? user.email : 'anonymous'; // Obtém o email do utilizador logado
 
-            // Armazenar o token gerado para ser copiado
-            copyTokenButton.dataset.token = token;
+            const tokenData = {
+                token: token,
+                userName: name,
+                expirationTimestamp: expirationTime, // Armazena como timestamp para facilitar consultas
+                generatedBy: generatedByEmail,
+                createdAt: Date.now() // Timestamp da criação
+            };
+
+            try {
+                // Adiciona um novo documento com um ID gerado automaticamente à coleção 'generatedTokens'
+                const docRef = await addDoc(collection(db, `artifacts/${appId}/public/data/generatedTokens`), tokenData);
+                console.log("Documento guardado com ID: ", docRef.id);
+
+                tokenResultDisplay.textContent = `Token Gerado: ${token}`;
+                tokenResultDisplay.style.color = 'black';
+                expirationDateDisplay.textContent = `Vence em: ${expirationDate.toLocaleDateString('pt-BR')} às ${expirationDate.toLocaleTimeString('pt-BR')}`;
+                copyTokenButton.classList.remove('hidden'); // Mostra o botão de copiar
+                copyTokenButton.dataset.token = token; // Armazena o token para ser copiado
+                showMessage('Token gerado e guardado no Firestore com sucesso!', false);
+
+            } catch (e) {
+                console.error("Erro ao adicionar documento ao Firestore: ", e);
+                tokenResultDisplay.textContent = 'Erro ao gerar e guardar o token.';
+                tokenResultDisplay.style.color = 'red';
+                expirationDateDisplay.textContent = '';
+                copyTokenButton.classList.add('hidden');
+                showMessage('Erro ao guardar o token no Firestore. Verifique a consola para detalhes.', true);
+            }
         });
 
         copyTokenButton.addEventListener('click', () => {
@@ -161,10 +205,10 @@
                 textArea.select();
                 try {
                     document.execCommand('copy');
-                    alert('Token copiado para a área de transferência!'); // Alerta para feedback visual
+                    showMessage('Token copiado para a área de transferência!', false);
                 } catch (err) {
                     console.error('Falha ao copiar o token: ', err);
-                    alert('Erro ao copiar o token. Por favor, copie manualmente.');
+                    showMessage('Erro ao copiar o token. Por favor, copie manualmente.', true);
                 }
                 document.body.removeChild(textArea);
             }
