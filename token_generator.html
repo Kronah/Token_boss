@@ -103,7 +103,22 @@
 
         <!-- Secção da Lista de Tokens (Coluna Direita) -->
         <div class="w-full md:w-1/2">
-            <h2 class="text-2xl font-bold text-black mb-4">Tokens Gerados Recentemente</h2>
+            <h2 class="text-2xl font-bold text-black mb-4">Visão Geral dos Tokens</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 text-black">
+                <div class="bg-blue-800 bg-opacity-70 text-white p-4 rounded-lg shadow-md">
+                    <p class="text-sm">Total</p>
+                    <p id="totalTokens" class="text-2xl font-bold">0</p>
+                </div>
+                <div class="bg-green-800 bg-opacity-70 text-white p-4 rounded-lg shadow-md">
+                    <p class="text-sm">Ativos</p>
+                    <p id="activeTokens" class="text-2xl font-bold">0</p>
+                </div>
+                <div class="bg-red-800 bg-opacity-70 text-white p-4 rounded-lg shadow-md">
+                    <p class="text-sm">Expirados</p>
+                    <p id="expiredTokens" class="text-2xl font-bold">0</p>
+                </div>
+            </div>
+            <h2 class="text-2xl font-bold text-black mb-4">Lista Detalhada de Tokens</h2>
             <div id="token-list" class="space-y-4 mb-6 text-left max-h-96 overflow-y-auto p-2 rounded-md border border-black">
                 <!-- Tokens serão carregados aqui em tempo real -->
                 <p class="text-black text-center" id="loading-tokens-message">Carregando tokens...</p>
@@ -175,6 +190,11 @@
         const tokenListDiv = document.getElementById('token-list');
         const loadingTokensMessage = document.getElementById('loading-tokens-message');
 
+        // Referências para os novos elementos de estatísticas
+        const totalTokensDisplay = document.getElementById('totalTokens');
+        const activeTokensDisplay = document.getElementById('activeTokens');
+        const expiredTokensDisplay = document.getElementById('expiredTokens');
+
         // Referências para o Modal Personalizado
         const customConfirmModal = document.getElementById('customConfirmModal');
         const modalMessage = document.getElementById('modalMessage');
@@ -235,27 +255,42 @@
 
         // --- Funções de Gestão de Tokens ---
 
-        // Função para renderizar os tokens na UI
+        // Função para renderizar os tokens na UI e atualizar estatísticas
         function renderTokens(tokens) {
             tokenListDiv.innerHTML = ''; // Limpa a lista existente
             if (tokens.length === 0) {
                 tokenListDiv.innerHTML = '<p class="text-black text-center">Nenhum token encontrado.</p>';
+                totalTokensDisplay.textContent = 0;
+                activeTokensDisplay.textContent = 0;
+                expiredTokensDisplay.textContent = 0;
                 return;
             }
 
+            const now = Date.now();
+            let activeCount = 0;
+            let expiredCount = 0;
+
             tokens.forEach(token => {
+                // Determina se o token está ativo ou expirado
+                const isActive = token.expirationTimestamp > now;
+                if (isActive) {
+                    activeCount++;
+                } else {
+                    expiredCount++;
+                }
+
                 const tokenCard = document.createElement('div');
-                tokenCard.className = 'token-card p-4 mb-2 rounded-md shadow-sm flex flex-col justify-between';
+                tokenCard.className = `token-card p-4 mb-2 rounded-md shadow-sm flex flex-col justify-between ${isActive ? '' : 'opacity-70 grayscale'}`; // Adiciona estilo para expirados
                 tokenCard.innerHTML = `
                     <div>
                         <p class="font-semibold text-black text-base break-all">Token: <span class="text-gray-800">${token.token}</span></p>
                         <p class="text-black text-sm">Nome: <span class="text-gray-700">${token.userName}</span></p>
-                        <p class="text-black text-sm">Vence em: <span class="text-gray-700">${formatTimestamp(token.expirationTimestamp)}</span></p>
+                        <p class="text-black text-sm">Vence em: <span class="text-gray-700">${formatTimestamp(token.expirationTimestamp)} ${isActive ? '' : '(EXPIRADO)'}</span></p>
                         <p class="text-black text-sm">Gerado por: <span class="text-gray-700">${token.generatedBy}</span></p>
                         <p class="text-black text-sm">Criado em: <span class="text-gray-700">${formatTimestamp(token.createdAt)}</span></p>
                     </div>
                     <div class="mt-4 flex space-x-2 justify-end">
-                        <button class="renew-token-button bg-gray-600 text-white px-3 py-1 rounded-md text-xs hover:bg-gray-700 transition duration-200" data-token-id="${token.id}">
+                        <button class="renew-token-button bg-gray-600 text-white px-3 py-1 rounded-md text-xs hover:bg-gray-700 transition duration-200" data-token-id="${token.id}" ${isActive ? '' : 'disabled'}>
                             <i class="fas fa-redo-alt mr-1"></i> Renovar
                         </button>
                         <button class="delete-token-button bg-red-600 text-white px-3 py-1 rounded-md text-xs hover:bg-red-700 transition duration-200" data-token-id="${token.id}">
@@ -265,6 +300,11 @@
                 `;
                 tokenListDiv.appendChild(tokenCard);
             });
+
+            // Atualiza os elementos de estatísticas
+            totalTokensDisplay.textContent = tokens.length;
+            activeTokensDisplay.textContent = activeCount;
+            expiredTokensDisplay.textContent = expiredCount;
 
             // Adiciona event listeners aos botões de apagar e renovar
             document.querySelectorAll('.delete-token-button').forEach(button => {
@@ -327,7 +367,7 @@
                         tokens.push({ id: doc.id, ...doc.data() });
                     });
                     tokens.sort((a, b) => b.createdAt - a.createdAt); // Ordena pelo mais recente
-                    renderTokens(tokens);
+                    renderTokens(tokens); // Renderiza e atualiza estatísticas
                     loadingTokensMessage.classList.add('hidden');
                 }, (error) => {
                     console.error("Erro ao buscar tokens do Firestore:", error);
