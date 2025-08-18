@@ -108,7 +108,7 @@
 
         // Referências aos elementos HTML
         const emailInput = document.getElementById('email');
-        const passwordInput = document = document.getElementById('password');
+        const passwordInput = document.getElementById('password'); 
         const loginButton = document.getElementById('login-button');
         const signupButton = document.getElementById('signup-button');
         const messageDisplay = document.getElementById('message');
@@ -164,6 +164,9 @@
                     case 'auth/user-disabled':
                         errorMessage = 'Esta conta foi desativada.';
                         break;
+                    case 'auth/operation-not-allowed': // Adicionado tratamento de erro específico
+                        errorMessage = 'Autenticação por Email/Senha não está ativada no Firebase. Por favor, ative-a nas configurações do seu projeto.';
+                        break;
                     default:
                         errorMessage = `Erro ao autenticar: ${error.message}`;
                 }
@@ -200,6 +203,9 @@
                         break;
                     case 'auth/weak-password':
                         errorMessage = 'A senha é muito fraca. Escolha uma mais forte.';
+                        break;
+                    case 'auth/operation-not-allowed': // Adicionado tratamento de erro específico
+                        errorMessage = 'Autenticação por Email/Senha não está ativada no Firebase. Por favor, ative-a nas configurações do seu projeto.';
                         break;
                     default:
                         errorMessage = `Erro ao criar conta: ${error.message}`;
