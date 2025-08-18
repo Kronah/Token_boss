@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Define as fontes Inter (para texto geral) e Cinzel Decorative (para títulos) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Inclui Font Awesome para ícones (se precisar de ícones futuros) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         body {
             font-family: 'Inter', sans-serif; /* Fonte padrão para todo o corpo */
@@ -23,12 +25,18 @@
             font-family: 'Cinzel Decorative', serif;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); /* Sombra para realçar o texto */
         }
+        /* Estilo para cada cartão de token na lista */
+        .token-card {
+            background-color: rgba(255, 255, 255, 0.6); /* Fundo semi-transparente para cada token */
+            border-left: 4px solid #b91c1c; /* Borda vermelha para destaque */
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
     <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md bg-opacity-20 text-center">
         <h1 class="text-3xl font-bold text-black mb-6">Gerador de Token</h1>
         <p class="text-black text-lg mb-4" id="user-info">Bem-vindo(a)!</p>
+        <p class="text-black text-sm mb-4">Seu ID de Utilizador: <span id="user-id-display" class="font-semibold break-all"></span></p>
 
         <div class="space-y-4 mb-6">
             <div>
@@ -66,6 +74,13 @@
             <p id="message" class="text-center text-sm mt-4"></p> <!-- Elemento para exibir mensagens de feedback -->
         </div>
 
+        <h2 class="text-2xl font-bold text-black mb-4 mt-8">Tokens Gerados Recentemente</h2>
+        <div id="token-list" class="space-y-4 mb-6 text-left max-h-60 overflow-y-auto p-2 rounded-md border border-black">
+            <!-- Tokens serão carregados aqui em tempo real -->
+            <p class="text-black text-center" id="loading-tokens-message">Carregando tokens...</p>
+        </div>
+
+
         <button
             id="logout-button"
             class="mt-4 bg-red-800 text-white py-2 px-6 rounded-md hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-700 focus:ring-opacity-50 transition duration-300 transform hover:scale-105"
@@ -81,8 +96,8 @@
     <script type="module">
         // Importa as funções necessárias do Firebase
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
-        import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
-        import { getFirestore, collection, addDoc } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js'; // Importa Firestore
+        import { getAuth, onAuthStateChanged, signOut, signInWithCustomToken, signInAnonymously } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc, query, onSnapshot, orderBy } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js'; // Importa Firestore e query, onSnapshot, orderBy
 
         // Variáveis globais fornecidas pelo ambiente Canvas
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id'; // Fallback para 'default-app-id' para testes locais
@@ -96,6 +111,8 @@
             appId: "1:141528827265:web:531737e108e484a0869480" // Este é um exemplo, verifique o seu no console!
         });
         const firebaseConfig = JSON.parse(firebaseConfigString);
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
 
         // Inicializa o Firebase com a configuração fornecida
         const app = initializeApp(firebaseConfig);
@@ -105,6 +122,7 @@
         const githubPagesBaseUrl = 'https://kronah.github.io/Token_boss/'; // URL base do seu GitHub Pages
 
         const userInfoDisplay = document.getElementById('user-info');
+        const userIdDisplay = document.getElementById('user-id-display'); // Para exibir o ID do utilizador
         const logoutButton = document.getElementById('logout-button');
         const userNameInput = document.getElementById('userName');
         const expirationDaysInput = document.getElementById('expirationDays');
@@ -113,6 +131,9 @@
         const expirationDateDisplay = document.getElementById('expirationDate');
         const copyTokenButton = document.getElementById('copyTokenButton');
         const messageDisplay = document.getElementById('message'); // Referência ao elemento de mensagem de feedback
+        const tokenListDiv = document.getElementById('token-list'); // Novo: Div para a lista de tokens
+        const loadingTokensMessage = document.getElementById('loading-tokens-message'); // Novo: Mensagem de carregamento
+
 
         // Função para exibir mensagens na tela (substitui alert())
         function showMessage(text, isError = false) {
@@ -124,13 +145,84 @@
             }
         }
 
-        onAuthStateChanged(auth, (user) => {
+        // Função para formatar o timestamp em data e hora legíveis
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return `${date.toLocaleDateString('pt-BR')} às ${date.toLocaleTimeString('pt-BR')}`;
+        }
+
+        // Função para renderizar os tokens na UI
+        function renderTokens(tokens) {
+            tokenListDiv.innerHTML = ''; // Limpa a lista existente
+            if (tokens.length === 0) {
+                tokenListDiv.innerHTML = '<p class="text-black text-center">Nenhum token encontrado.</p>';
+                return;
+            }
+
+            tokens.forEach(token => {
+                const tokenCard = document.createElement('div');
+                tokenCard.className = 'token-card p-4 mb-2 rounded-md shadow-sm';
+                tokenCard.innerHTML = `
+                    <p class="font-semibold text-black text-base break-all">Token: <span class="text-gray-800">${token.token}</span></p>
+                    <p class="text-black text-sm">Nome: <span class="text-gray-700">${token.userName}</span></p>
+                    <p class="text-black text-sm">Vence em: <span class="text-gray-700">${formatTimestamp(token.expirationTimestamp)}</span></p>
+                    <p class="text-black text-sm">Gerado por: <span class="text-gray-700">${token.generatedBy}</span></p>
+                    <p class="text-black text-sm">Criado em: <span class="text-gray-700">${formatTimestamp(token.createdAt)}</span></p>
+                `;
+                tokenListDiv.appendChild(tokenCard);
+            });
+        }
+
+        // Listener para o estado de autenticação
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
+                // Utilizador autenticado
                 userInfoDisplay.textContent = `Bem-vindo(a), ${user.email}!`;
+                userIdDisplay.textContent = user.uid; // Exibe o UID do utilizador
+
+                // Configura o ouvinte em tempo real para os tokens no Firestore
+                const tokensCollectionRef = collection(db, `artifacts/${appId}/public/data/generatedTokens`);
+                const q = query(tokensCollectionRef); // Consulta para todos os tokens
+
+                onSnapshot(q, (snapshot) => {
+                    const tokens = [];
+                    snapshot.forEach((doc) => {
+                        tokens.push({ id: doc.id, ...doc.data() });
+                    });
+                    // Ordena os tokens pela data de criação, do mais recente para o mais antigo
+                    tokens.sort((a, b) => b.createdAt - a.createdAt);
+                    renderTokens(tokens);
+                    loadingTokensMessage.classList.add('hidden'); // Oculta a mensagem de carregamento
+                }, (error) => {
+                    console.error("Erro ao buscar tokens do Firestore:", error);
+                    showMessage('Erro ao carregar tokens. Verifique a consola.', true);
+                    loadingTokensMessage.textContent = 'Erro ao carregar tokens.';
+                });
+
             } else {
-                window.location.href = `${githubPagesBaseUrl}index.html`; // Redireciona se não estiver autenticado
+                // Utilizador desautenticado, redireciona para a tela de login
+                window.location.href = `${githubPagesBaseUrl}index.html`;
             }
         });
+
+        // Função para autenticar o utilizador no carregamento da página (para o ambiente Canvas)
+        async function authenticateUser() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    // Se não houver token personalizado (ex: testes locais ou fora do Canvas), tenta autenticação anónima
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Erro na autenticação inicial:", error);
+                showMessage('Erro na autenticação. Por favor, tente novamente.', true);
+                window.location.href = `${githubPagesBaseUrl}index.html`; // Redireciona para login em caso de falha grave
+            }
+        }
+
+        // Chama a função de autenticação no carregamento da página
+        authenticateUser();
 
         logoutButton.addEventListener('click', async () => {
             try {
@@ -142,7 +234,7 @@
             }
         });
 
-        generateTokenButton.addEventListener('click', async () => { // Alterado para async
+        generateTokenButton.addEventListener('click', async () => {
             const name = userNameInput.value.trim();
             const days = parseInt(expirationDaysInput.value);
 
@@ -159,7 +251,6 @@
             const expirationDate = new Date(expirationTime);
 
             // Geração de um token simples (apenas para demonstração)
-            // Em um ambiente de produção, tokens deveriam ser gerados de forma mais segura
             const token = btoa(`${name}:${expirationTime}:${Math.random().toString(36).substring(2, 15)}`);
 
             const user = auth.currentUser;
